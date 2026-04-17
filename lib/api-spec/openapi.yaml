@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
+  version: 0.2.0
   description: API specification
 servers:
   - url: /api
@@ -30,8 +30,8 @@ paths:
     post:
       operationId: predictPhishing
       tags: [phishing]
-      summary: Predict if email is phishing
-      description: Analyzes email text and returns phishing prediction with confidence and keywords
+      summary: Analyze email for phishing, AI-generated content, or legitimacy
+      description: Runs hybrid 3-class classification on email text
       requestBody:
         required: true
         content:
@@ -40,7 +40,7 @@ paths:
               $ref: "#/components/schemas/PredictRequest"
       responses:
         "200":
-          description: Prediction result
+          description: Analysis result
           content:
             application/json:
               schema:
@@ -75,7 +75,7 @@ paths:
       operationId: getStats
       tags: [phishing]
       summary: Get detection statistics
-      description: Returns aggregate stats about phishing vs safe emails analyzed
+      description: Returns aggregate stats about all analyzed emails
       responses:
         "200":
           description: Detection statistics
@@ -105,27 +105,55 @@ components:
       properties:
         prediction:
           type: string
-          enum: [Phishing, Safe]
+          enum: [Legitimate, AI-Generated Suspicious, Phishing]
         confidence:
           type: number
-          description: Confidence score between 0 and 1
+          description: Confidence percentage (0–100)
+        threat_level:
+          type: string
+          enum: [None, Low, Medium, High, Critical]
+        ml_score:
+          type: number
+          description: ML model score (0–100)
+        rule_score:
+          type: number
+          description: Rule-based keyword score (0–100)
+        ai_score:
+          type: number
+          description: AI-generated content detection score (0–100)
         keywords:
           type: array
           items:
             type: string
-          description: Suspicious keywords found in the email
-        ml_score:
-          type: number
-          description: ML model score
-        rule_score:
-          type: number
-          description: Rule-based keyword score
+          description: Suspicious phishing keywords found
+        urls:
+          type: array
+          items:
+            type: string
+          description: URLs extracted from the email
+        tone:
+          type: string
+          description: Detected tone of the email
+        explanation:
+          type: string
+          description: Human-readable explanation of the verdict
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: Actionable recommendations based on the prediction
       required:
         - prediction
         - confidence
-        - keywords
+        - threat_level
         - ml_score
         - rule_score
+        - ai_score
+        - keywords
+        - urls
+        - tone
+        - explanation
+        - suggestions
     HistoryItem:
       type: object
       properties:
@@ -135,13 +163,27 @@ components:
           type: string
         prediction:
           type: string
-          enum: [Phishing, Safe]
+          enum: [Legitimate, AI-Generated Suspicious, Phishing]
         confidence:
           type: number
+        threat_level:
+          type: string
         keywords:
           type: array
           items:
             type: string
+        urls:
+          type: array
+          items:
+            type: string
+        tone:
+          type: string
+        ml_score:
+          type: number
+        rule_score:
+          type: number
+        ai_score:
+          type: number
         created_at:
           type: string
       required:
@@ -149,7 +191,13 @@ components:
         - text_preview
         - prediction
         - confidence
+        - threat_level
         - keywords
+        - urls
+        - tone
+        - ml_score
+        - rule_score
+        - ai_score
         - created_at
     HistoryResponse:
       type: object
@@ -167,18 +215,27 @@ components:
           type: integer
         phishing_count:
           type: integer
-        safe_count:
+        ai_suspicious_count:
+          type: integer
+        legitimate_count:
           type: integer
         phishing_rate:
           type: number
+        ai_suspicious_rate:
+          type: number
         avg_confidence:
+          type: number
+        avg_ai_score:
           type: number
       required:
         - total
         - phishing_count
-        - safe_count
+        - ai_suspicious_count
+        - legitimate_count
         - phishing_rate
+        - ai_suspicious_rate
         - avg_confidence
+        - avg_ai_score
     ErrorResponse:
       type: object
       properties:

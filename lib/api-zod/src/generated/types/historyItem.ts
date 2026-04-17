@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import type { HistoryItemPrediction } from "./historyItemPrediction";
 
@@ -12,6 +12,12 @@ export interface HistoryItem {
   text_preview: string;
   prediction: HistoryItemPrediction;
   confidence: number;
+  threat_level: string;
   keywords: string[];
+  urls: string[];
+  tone: string;
+  ml_score: number;
+  rule_score: number;
+  ai_score: number;
   created_at: string;
 }

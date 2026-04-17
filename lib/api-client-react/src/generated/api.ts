@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
@@ -112,8 +112,8 @@ export function useHealthCheck<
 }
 
 /**
- * Analyzes email text and returns phishing prediction with confidence and keywords
- * @summary Predict if email is phishing
+ * Runs hybrid 3-class classification on email text
+ * @summary Analyze email for phishing, AI-generated content, or legitimacy
  */
 export const getPredictPhishingUrl = () => {
   return `/api/predict`;
@@ -176,7 +176,7 @@ export type PredictPhishingMutationBody = BodyType<PredictRequest>;
 export type PredictPhishingMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Predict if email is phishing
+ * @summary Analyze email for phishing, AI-generated content, or legitimacy
  */
 export const usePredictPhishing = <
   TError = ErrorType<ErrorResponse>,
@@ -300,7 +300,7 @@ export function useGetPredictionHistory<
 }
 
 /**
- * Returns aggregate stats about phishing vs safe emails analyzed
+ * Returns aggregate stats about all analyzed emails
  * @summary Get detection statistics
  */
 export const getGetStatsUrl = () => {

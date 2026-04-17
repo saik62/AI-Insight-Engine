@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
@@ -18,28 +18,52 @@ export type PredictResponsePrediction =
   (typeof PredictResponsePrediction)[keyof typeof PredictResponsePrediction];
 
 export const PredictResponsePrediction = {
+  Legitimate: "Legitimate",
+  "AI-Generated_Suspicious": "AI-Generated Suspicious",
   Phishing: "Phishing",
-  Safe: "Safe",
+} as const;
+
+export type PredictResponseThreatLevel =
+  (typeof PredictResponseThreatLevel)[keyof typeof PredictResponseThreatLevel];
+
+export const PredictResponseThreatLevel = {
+  None: "None",
+  Low: "Low",
+  Medium: "Medium",
+  High: "High",
+  Critical: "Critical",
 } as const;
 
 export interface PredictResponse {
   prediction: PredictResponsePrediction;
-  /** Confidence score between 0 and 1 */
+  /** Confidence percentage (0–100) */
   confidence: number;
-  /** Suspicious keywords found in the email */
-  keywords: string[];
-  /** ML model score */
+  threat_level: PredictResponseThreatLevel;
+  /** ML model score (0–100) */
   ml_score: number;
-  /** Rule-based keyword score */
+  /** Rule-based keyword score (0–100) */
   rule_score: number;
+  /** AI-generated content detection score (0–100) */
+  ai_score: number;
+  /** Suspicious phishing keywords found */
+  keywords: string[];
+  /** URLs extracted from the email */
+  urls: string[];
+  /** Detected tone of the email */
+  tone: string;
+  /** Human-readable explanation of the verdict */
+  explanation: string;
+  /** Actionable recommendations based on the prediction */
+  suggestions: string[];
 }
 
 export type HistoryItemPrediction =
   (typeof HistoryItemPrediction)[keyof typeof HistoryItemPrediction];
 
 export const HistoryItemPrediction = {
+  Legitimate: "Legitimate",
+  "AI-Generated_Suspicious": "AI-Generated Suspicious",
   Phishing: "Phishing",
-  Safe: "Safe",
 } as const;
 
 export interface HistoryItem {
@@ -47,7 +71,13 @@ export interface HistoryItem {
   text_preview: string;
   prediction: HistoryItemPrediction;
   confidence: number;
+  threat_level: string;
   keywords: string[];
+  urls: string[];
+  tone: string;
+  ml_score: number;
+  rule_score: number;
+  ai_score: number;
   created_at: string;
 }
 
@@ -58,9 +88,12 @@ export interface HistoryResponse {
 export interface StatsResponse {
   total: number;
   phishing_count: number;
-  safe_count: number;
+  ai_suspicious_count: number;
+  legitimate_count: number;
   phishing_rate: number;
+  ai_suspicious_rate: number;
   avg_confidence: number;
+  avg_ai_score: number;
 }
 
 export interface ErrorResponse {

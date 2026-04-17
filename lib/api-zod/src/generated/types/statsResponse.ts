@@ -3,13 +3,16 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export interface StatsResponse {
   total: number;
   phishing_count: number;
-  safe_count: number;
+  ai_suspicious_count: number;
+  legitimate_count: number;
   phishing_rate: number;
+  ai_suspicious_rate: number;
   avg_confidence: number;
+  avg_ai_score: number;
 }

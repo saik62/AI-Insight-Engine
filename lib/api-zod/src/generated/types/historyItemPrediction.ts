@@ -3,13 +3,14 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export type HistoryItemPrediction =
   (typeof HistoryItemPrediction)[keyof typeof HistoryItemPrediction];
 
 export const HistoryItemPrediction = {
+  Legitimate: "Legitimate",
+  "AI-Generated_Suspicious": "AI-Generated Suspicious",
   Phishing: "Phishing",
-  Safe: "Safe",
 } as const;

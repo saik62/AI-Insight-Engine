@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
@@ -16,21 +16,33 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Analyzes email text and returns phishing prediction with confidence and keywords
- * @summary Predict if email is phishing
+ * Runs hybrid 3-class classification on email text
+ * @summary Analyze email for phishing, AI-generated content, or legitimacy
  */
 export const PredictPhishingBody = zod.object({
   text: zod.string().describe("The email text to analyze"),
 });
 
 export const PredictPhishingResponse = zod.object({
-  prediction: zod.enum(["Phishing", "Safe"]),
-  confidence: zod.number().describe("Confidence score between 0 and 1"),
+  prediction: zod.enum(["Legitimate", "AI-Generated Suspicious", "Phishing"]),
+  confidence: zod.number().describe("Confidence percentage (0–100)"),
+  threat_level: zod.enum(["None", "Low", "Medium", "High", "Critical"]),
+  ml_score: zod.number().describe("ML model score (0–100)"),
+  rule_score: zod.number().describe("Rule-based keyword score (0–100)"),
+  ai_score: zod
+    .number()
+    .describe("AI-generated content detection score (0–100)"),
   keywords: zod
     .array(zod.string())
-    .describe("Suspicious keywords found in the email"),
-  ml_score: zod.number().describe("ML model score"),
-  rule_score: zod.number().describe("Rule-based keyword score"),
+    .describe("Suspicious phishing keywords found"),
+  urls: zod.array(zod.string()).describe("URLs extracted from the email"),
+  tone: zod.string().describe("Detected tone of the email"),
+  explanation: zod
+    .string()
+    .describe("Human-readable explanation of the verdict"),
+  suggestions: zod
+    .array(zod.string())
+    .describe("Actionable recommendations based on the prediction"),
 });
 
 /**
@@ -48,22 +60,35 @@ export const GetPredictionHistoryResponse = zod.object({
     zod.object({
       id: zod.number(),
       text_preview: zod.string(),
-      prediction: zod.enum(["Phishing", "Safe"]),
+      prediction: zod.enum([
+        "Legitimate",
+        "AI-Generated Suspicious",
+        "Phishing",
+      ]),
       confidence: zod.number(),
+      threat_level: zod.string(),
       keywords: zod.array(zod.string()),
+      urls: zod.array(zod.string()),
+      tone: zod.string(),
+      ml_score: zod.number(),
+      rule_score: zod.number(),
+      ai_score: zod.number(),
       created_at: zod.string(),
     }),
   ),
 });
 
 /**
- * Returns aggregate stats about phishing vs safe emails analyzed
+ * Returns aggregate stats about all analyzed emails
  * @summary Get detection statistics
  */
 export const GetStatsResponse = zod.object({
   total: zod.number(),
   phishing_count: zod.number(),
-  safe_count: zod.number(),
+  ai_suspicious_count: zod.number(),
+  legitimate_count: zod.number(),
   phishing_rate: zod.number(),
+  ai_suspicious_rate: zod.number(),
   avg_confidence: zod.number(),
+  avg_ai_score: zod.number(),
 });
