@@ -6,4 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./errorResponse";
+export * from "./getPredictionHistoryParams";
 export * from "./healthStatus";
+export * from "./historyItem";
+export * from "./historyItemPrediction";
+export * from "./historyResponse";
+export * from "./predictRequest";
+export * from "./predictResponse";
+export * from "./predictResponsePrediction";
+export * from "./statsResponse";

@@ -5,18 +5,29 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  GetPredictionHistoryParams,
+  HealthStatus,
+  HistoryResponse,
+  PredictRequest,
+  PredictResponse,
+  StatsResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +103,262 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Analyzes email text and returns phishing prediction with confidence and keywords
+ * @summary Predict if email is phishing
+ */
+export const getPredictPhishingUrl = () => {
+  return `/api/predict`;
+};
+
+export const predictPhishing = async (
+  predictRequest: PredictRequest,
+  options?: RequestInit,
+): Promise<PredictResponse> => {
+  return customFetch<PredictResponse>(getPredictPhishingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(predictRequest),
+  });
+};
+
+export const getPredictPhishingMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof predictPhishing>>,
+    TError,
+    { data: BodyType<PredictRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof predictPhishing>>,
+  TError,
+  { data: BodyType<PredictRequest> },
+  TContext
+> => {
+  const mutationKey = ["predictPhishing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof predictPhishing>>,
+    { data: BodyType<PredictRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return predictPhishing(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PredictPhishingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof predictPhishing>>
+>;
+export type PredictPhishingMutationBody = BodyType<PredictRequest>;
+export type PredictPhishingMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Predict if email is phishing
+ */
+export const usePredictPhishing = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof predictPhishing>>,
+    TError,
+    { data: BodyType<PredictRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof predictPhishing>>,
+  TError,
+  { data: BodyType<PredictRequest> },
+  TContext
+> => {
+  return useMutation(getPredictPhishingMutationOptions(options));
+};
+
+/**
+ * Returns the last N predictions made
+ * @summary Get recent prediction history
+ */
+export const getGetPredictionHistoryUrl = (
+  params?: GetPredictionHistoryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/history?${stringifiedParams}`
+    : `/api/history`;
+};
+
+export const getPredictionHistory = async (
+  params?: GetPredictionHistoryParams,
+  options?: RequestInit,
+): Promise<HistoryResponse> => {
+  return customFetch<HistoryResponse>(getGetPredictionHistoryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPredictionHistoryQueryKey = (
+  params?: GetPredictionHistoryParams,
+) => {
+  return [`/api/history`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPredictionHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPredictionHistory>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPredictionHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPredictionHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPredictionHistoryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPredictionHistory>>
+  > = ({ signal }) =>
+    getPredictionHistory(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPredictionHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPredictionHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPredictionHistory>>
+>;
+export type GetPredictionHistoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get recent prediction history
+ */
+
+export function useGetPredictionHistory<
+  TData = Awaited<ReturnType<typeof getPredictionHistory>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPredictionHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPredictionHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPredictionHistoryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns aggregate stats about phishing vs safe emails analyzed
+ * @summary Get detection statistics
+ */
+export const getGetStatsUrl = () => {
+  return `/api/stats`;
+};
+
+export const getStats = async (
+  options?: RequestInit,
+): Promise<StatsResponse> => {
+  return customFetch<StatsResponse>(getGetStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStatsQueryKey = () => {
+  return [`/api/stats`] as const;
+};
+
+export const getGetStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStats>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStats>>> = ({
+    signal,
+  }) => getStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStats>>
+>;
+export type GetStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get detection statistics
+ */
+
+export function useGetStats<
+  TData = Awaited<ReturnType<typeof getStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStats>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

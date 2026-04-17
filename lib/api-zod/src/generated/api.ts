@@ -14,3 +14,56 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Analyzes email text and returns phishing prediction with confidence and keywords
+ * @summary Predict if email is phishing
+ */
+export const PredictPhishingBody = zod.object({
+  text: zod.string().describe("The email text to analyze"),
+});
+
+export const PredictPhishingResponse = zod.object({
+  prediction: zod.enum(["Phishing", "Safe"]),
+  confidence: zod.number().describe("Confidence score between 0 and 1"),
+  keywords: zod
+    .array(zod.string())
+    .describe("Suspicious keywords found in the email"),
+  ml_score: zod.number().describe("ML model score"),
+  rule_score: zod.number().describe("Rule-based keyword score"),
+});
+
+/**
+ * Returns the last N predictions made
+ * @summary Get recent prediction history
+ */
+export const getPredictionHistoryQueryLimitDefault = 10;
+
+export const GetPredictionHistoryQueryParams = zod.object({
+  limit: zod.coerce.number().default(getPredictionHistoryQueryLimitDefault),
+});
+
+export const GetPredictionHistoryResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      text_preview: zod.string(),
+      prediction: zod.enum(["Phishing", "Safe"]),
+      confidence: zod.number(),
+      keywords: zod.array(zod.string()),
+      created_at: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * Returns aggregate stats about phishing vs safe emails analyzed
+ * @summary Get detection statistics
+ */
+export const GetStatsResponse = zod.object({
+  total: zod.number(),
+  phishing_count: zod.number(),
+  safe_count: zod.number(),
+  phishing_rate: zod.number(),
+  avg_confidence: zod.number(),
+});

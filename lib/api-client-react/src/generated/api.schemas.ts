@@ -8,3 +8,65 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface PredictRequest {
+  /** The email text to analyze */
+  text: string;
+}
+
+export type PredictResponsePrediction =
+  (typeof PredictResponsePrediction)[keyof typeof PredictResponsePrediction];
+
+export const PredictResponsePrediction = {
+  Phishing: "Phishing",
+  Safe: "Safe",
+} as const;
+
+export interface PredictResponse {
+  prediction: PredictResponsePrediction;
+  /** Confidence score between 0 and 1 */
+  confidence: number;
+  /** Suspicious keywords found in the email */
+  keywords: string[];
+  /** ML model score */
+  ml_score: number;
+  /** Rule-based keyword score */
+  rule_score: number;
+}
+
+export type HistoryItemPrediction =
+  (typeof HistoryItemPrediction)[keyof typeof HistoryItemPrediction];
+
+export const HistoryItemPrediction = {
+  Phishing: "Phishing",
+  Safe: "Safe",
+} as const;
+
+export interface HistoryItem {
+  id: number;
+  text_preview: string;
+  prediction: HistoryItemPrediction;
+  confidence: number;
+  keywords: string[];
+  created_at: string;
+}
+
+export interface HistoryResponse {
+  items: HistoryItem[];
+}
+
+export interface StatsResponse {
+  total: number;
+  phishing_count: number;
+  safe_count: number;
+  phishing_rate: number;
+  avg_confidence: number;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type GetPredictionHistoryParams = {
+  limit?: number;
+};

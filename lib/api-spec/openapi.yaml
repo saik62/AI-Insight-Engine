@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: phishing
+    description: Phishing detection operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,63 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /predict:
+    post:
+      operationId: predictPhishing
+      tags: [phishing]
+      summary: Predict if email is phishing
+      description: Analyzes email text and returns phishing prediction with confidence and keywords
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictRequest"
+      responses:
+        "200":
+          description: Prediction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /history:
+    get:
+      operationId: getPredictionHistory
+      tags: [phishing]
+      summary: Get recent prediction history
+      description: Returns the last N predictions made
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: List of recent predictions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+  /stats:
+    get:
+      operationId: getStats
+      tags: [phishing]
+      summary: Get detection statistics
+      description: Returns aggregate stats about phishing vs safe emails analyzed
+      responses:
+        "200":
+          description: Detection statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +92,97 @@ components:
           type: string
       required:
         - status
-
+    PredictRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          description: The email text to analyze
+      required:
+        - text
+    PredictResponse:
+      type: object
+      properties:
+        prediction:
+          type: string
+          enum: [Phishing, Safe]
+        confidence:
+          type: number
+          description: Confidence score between 0 and 1
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Suspicious keywords found in the email
+        ml_score:
+          type: number
+          description: ML model score
+        rule_score:
+          type: number
+          description: Rule-based keyword score
+      required:
+        - prediction
+        - confidence
+        - keywords
+        - ml_score
+        - rule_score
+    HistoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        text_preview:
+          type: string
+        prediction:
+          type: string
+          enum: [Phishing, Safe]
+        confidence:
+          type: number
+        keywords:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+      required:
+        - id
+        - text_preview
+        - prediction
+        - confidence
+        - keywords
+        - created_at
+    HistoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryItem"
+      required:
+        - items
+    StatsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        phishing_count:
+          type: integer
+        safe_count:
+          type: integer
+        phishing_rate:
+          type: number
+        avg_confidence:
+          type: number
+      required:
+        - total
+        - phishing_count
+        - safe_count
+        - phishing_rate
+        - avg_confidence
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

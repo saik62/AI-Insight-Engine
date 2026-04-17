@@ -1,0 +1,133 @@
+Build a complete full-stack project called:
+
+"AI-Powered Hybrid Phishing Detection System"
+
+Use Python (Flask backend) + simple HTML/CSS/JS frontend.
+
+---
+
+🔹 PROJECT REQUIREMENTS
+
+Create a web app where a user can paste email text and click "Detect".
+
+The system should:
+
+- Predict whether the email is "Phishing" or "Safe"
+- Show confidence percentage
+- Show important suspicious words
+
+---
+
+🔹 BACKEND (Flask)
+
+1. Create a Flask app with endpoint:
+   POST /predict
+
+2. Input:
+   JSON with email text
+
+3. Output:
+   JSON like:
+   {
+   "prediction": "Phishing",
+   "confidence": 0.96,
+   "keywords": ["urgent", "verify", "click"]
+   }
+
+---
+
+🔹 MODEL IMPLEMENTATION (IMPORTANT)
+
+Do NOT use heavy training (to avoid errors in Replit).
+
+Instead:
+
+Step 1: Use pre-trained logic
+
+- Use TF-IDF + Logistic Regression (simple & fast)
+
+Step 2: Add "transformer simulation"
+
+- Use HuggingFace pipeline:
+  sentiment-analysis OR text-classification
+  (simulate deep learning behavior)
+
+Step 3: Hybrid logic
+
+- Combine both outputs:
+  final_score = average(ml_score, transformer_score)
+
+---
+
+🔹 DATASET
+
+Create a small sample dataset inside code:
+Example:
+
+- "Click here to verify your bank account" → phishing
+- "Meeting scheduled tomorrow" → safe
+
+Train model inside the app (lightweight only)
+
+---
+
+🔹 FRONTEND
+
+Simple webpage:
+
+- Text area
+- Detect button
+- Result section
+
+Display:
+
+- Prediction
+- Confidence %
+- Highlight keywords
+
+---
+
+🔹 FILE STRUCTURE
+
+/app.py
+/templates/index.html
+/static/style.css
+
+---
+
+🔹 EXTRA FEATURES
+
+- Add basic keyword detection:
+  ["urgent", "click", "verify", "password", "bank"]
+
+- If these appear → increase phishing score
+
+---
+
+🔹 REQUIREMENTS.TXT
+
+flask
+scikit-learn
+transformers
+torch
+
+---
+
+🔹 FINAL OUTPUT
+
+Working web app in Replit where:
+
+- User enters email
+- Click detect
+- Gets phishing result instantly
+
+---
+
+IMPORTANT:
+
+- Keep everything lightweight
+- No large dataset downloads
+- No GPU required
+- Code must run directly in Replit without errors
+
+Now generate complete working code for all files.
