@@ -269,57 +269,95 @@ function getRuleScore(text: string): number {
 // =============================================================================
 
 const AI_PHRASES: { pattern: RegExp; points: number }[] = [
-  { pattern: /i\s+hope\s+this\s+(email\s+|message\s+)?finds\s+you\s+well/i, points: 20 },
+  // Generic greetings (+25 each)
+  { pattern: /dear\s+user\b/i, points: 25 },
+  { pattern: /dear\s+customer\b/i, points: 25 },
+  { pattern: /dear\s+valued\s+(user|customer|member|client)\b/i, points: 25 },
+  { pattern: /dear\s+(member|client|subscriber)\b/i, points: 22 },
+
+  // Overly formal / AI boilerplate phrases (+20 each)
+  { pattern: /we\s+hope\s+this\s+(message|email|letter)?\s*finds\s+you\s+well/i, points: 20 },
+  { pattern: /we\s+are\s+pleased\s+to\s+inform\s+you/i, points: 20 },
+  { pattern: /we\s+are\s+excited\s+to\s+inform\s+you/i, points: 20 },
+  { pattern: /thank\s+you\s+for\s+your\s+cooperation/i, points: 20 },
+  { pattern: /we\s+are\s+writing\s+to\s+(inform|notify|advise)/i, points: 20 },
   { pattern: /i\s+am\s+writing\s+to\s+(inform|notify|advise|bring)/i, points: 18 },
+  { pattern: /please\s+be\s+informed\s+that/i, points: 20 },
+  { pattern: /this\s+is\s+to\s+(inform|notify)\s+you/i, points: 20 },
+  { pattern: /we\s+regret\s+to\s+inform\s+you/i, points: 18 },
+  { pattern: /we\s+wish\s+to\s+(inform|notify|advise)/i, points: 20 },
+
+  // Template-style closing phrases (+16 each)
   { pattern: /please\s+do\s+not\s+hesitate\s+to\s+contact/i, points: 16 },
-  { pattern: /should\s+you\s+(have|require|need)\s+any\s+(questions|assistance|further)/i, points: 18 },
-  { pattern: /kindly\s+(note|be\s+informed|be\s+advised)/i, points: 16 },
-  { pattern: /please\s+be\s+informed\s+that/i, points: 18 },
-  { pattern: /we\s+regret\s+to\s+inform\s+you/i, points: 16 },
-  { pattern: /this\s+is\s+to\s+(inform|notify)\s+you/i, points: 18 },
-  { pattern: /at\s+your\s+earliest\s+convenience/i, points: 14 },
+  { pattern: /should\s+you\s+(have|require|need)\s+any\s+(questions|assistance|further)/i, points: 16 },
+  { pattern: /at\s+your\s+earliest\s+convenience/i, points: 16 },
   { pattern: /we\s+appreciate\s+your\s+(prompt|immediate)\s+(attention|response)/i, points: 16 },
-  { pattern: /dear\s+(valued\s+)?(customer|client|user|member|sir|ma'am)/i, points: 14 },
-  { pattern: /it\s+has\s+come\s+to\s+our\s+attention/i, points: 18 },
-  { pattern: /we\s+have\s+noticed\s+(unusual|suspicious)\s+activity/i, points: 16 },
-  { pattern: /for\s+your\s+(security|protection|safety),?\s+we/i, points: 14 },
+  { pattern: /thank\s+you\s+for\s+your\s+(time|patience|understanding|attention)/i, points: 14 },
+
+  // Formal / structured indicators (+14 each)
+  { pattern: /kindly\s+(note|be\s+informed|be\s+advised)/i, points: 14 },
+  { pattern: /it\s+has\s+come\s+to\s+our\s+attention/i, points: 16 },
   { pattern: /as\s+per\s+(our\s+records|our\s+policy|your\s+request)/i, points: 14 },
   { pattern: /in\s+accordance\s+with\s+our/i, points: 12 },
   { pattern: /pursuant\s+to\s+our/i, points: 14 },
   { pattern: /rest\s+assured\s+that/i, points: 12 },
   { pattern: /we\s+take\s+your\s+(privacy|security)\s+very\s+seriously/i, points: 14 },
+  { pattern: /for\s+your\s+(security|protection|safety),?\s+we/i, points: 14 },
   { pattern: /going\s+forward[,\s]/i, points: 10 },
+  { pattern: /we\s+have\s+noticed\s+(unusual|suspicious)\s+activity/i, points: 14 },
 ];
 
 function getAiScore(text: string): number {
   let score = 0;
 
+  // 1. Generic greeting detection (+25)
   for (const p of AI_PHRASES) {
     if (p.pattern.test(text)) score += p.points;
   }
 
-  // No personal name greeting (+10 if starts with "Dear" without first name)
-  if (/^dear\s+(customer|user|member|valued)/i.test(text.trim())) score += 10;
+  // 2. Lack of personalization: no first-name greeting detected (+15)
+  const hasPersonalGreeting = /\b(hi|hey|hello|dear)\s+[A-Z][a-z]{1,}/i.test(text) &&
+    !/dear\s+(user|customer|member|valued|client|subscriber)/i.test(text);
+  if (!hasPersonalGreeting) score += 15;
 
-  // Uniform sentence length (AI tends to write very uniform sentences)
+  // 3. Template structure: greeting + body + closing detected (+10)
+  const hasGreeting = /^(dear|hello|hi|good\s+(morning|afternoon|evening))/im.test(text.trim());
+  const hasClosing = /(sincerely|regards|best\s+wishes|warm\s+regards|yours\s+(truly|faithfully)|respectfully)/i.test(text);
+  const hasBodyLength = text.split(/\s+/).length > 30;
+  if (hasGreeting && hasClosing && hasBodyLength) score += 10;
+
+  // 4. Repetitive neutral / professional tone (+10)
+  const neutralPhraseCount = [
+    /\bplease\b/gi,
+    /\bkindly\b/gi,
+    /\bensure\b/gi,
+    /\bpromptly\b/gi,
+    /\baccordingly\b/gi,
+    /\bfurthermore\b/gi,
+    /\bmoreover\b/gi,
+    /\bhereby\b/gi,
+  ].filter((r) => r.test(text)).length;
+  if (neutralPhraseCount >= 2) score += 10;
+
+  // 5. Uniform sentence length — AI tends to write very evenly
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 10);
   if (sentences.length >= 3) {
     const lengths = sentences.map((s) => s.trim().split(/\s+/).length);
     const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
     const variance = lengths.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / lengths.length;
     const stdDev = Math.sqrt(variance);
-    if (stdDev < 5 && mean > 8) score += 12; // very uniform → likely AI
+    if (stdDev < 5 && mean > 8) score += 12;
   }
 
-  // High formal vocabulary ratio (long words)
+  // 6. High formal vocabulary ratio (long words)
   const words = text.split(/\s+/);
   const longWords = words.filter((w) => w.replace(/[^a-z]/gi, "").length > 9).length;
   const ratio = longWords / Math.max(words.length, 1);
   score += Math.round(Math.min(ratio * 40, 15));
 
-  // Penalize for personal touches (names, casual phrases)
-  if (/\b(hi|hey|hello)\s+[A-Z][a-z]+/i.test(text)) score -= 15;
-  if (/(thanks|cheers|talk\s+soon|catch\s+you\s+later)/i.test(text)) score -= 10;
+  // Penalize for personal touches (casual greetings with a real name)
+  if (/\b(hi|hey|hello)\s+[A-Z][a-z]+/i.test(text) && !(/dear\s+(user|customer|member)/i.test(text))) score -= 15;
+  if (/(thanks|cheers|talk\s+soon|catch\s+you\s+later|haha|lol|btw)/i.test(text)) score -= 10;
 
   return Math.min(Math.max(score, 0), 100);
 }
@@ -487,7 +525,7 @@ function analyze(text: string): AnalysisResult {
   if (ruleScore > 60 || mlScore > 70) {
     prediction = "Phishing";
     rawConf = Math.max(ruleScore, mlScore);
-  } else if (aiScore > 50) {
+  } else if (aiScore > 40) {
     prediction = "AI-Generated Suspicious";
     rawConf = aiScore;
   } else {
