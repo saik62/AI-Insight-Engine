@@ -134,9 +134,9 @@ export default function Home() {
                 <div className="space-y-4">
                   <h3 className="text-sm font-mono text-muted-foreground uppercase tracking-widest border-b border-border pb-2">Score Breakdown</h3>
                   <div className="space-y-4">
-                    <BarGauge label="ML Score" value={result.ml_score} color="hsl(var(--primary))" />
-                    <BarGauge label="Rule Score" value={result.rule_score} color="hsl(var(--primary))" />
-                    <BarGauge label="AI Score" value={result.ai_score} color="hsl(var(--warning))" />
+                    <BarGauge label="ML Score" value={result.ml_score} color="hsl(217, 91%, 60%)" />
+                    <BarGauge label="Rule Score" value={result.rule_score} color="hsl(0, 85%, 58%)" />
+                    <BarGauge label="AI Score" value={result.ai_score} color="hsl(38, 95%, 55%)" />
                   </div>
                 </div>
                 

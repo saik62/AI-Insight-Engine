@@ -10,205 +10,375 @@ const router = Router();
 type PredictionClass = "Legitimate" | "AI-Generated Suspicious" | "Phishing";
 type ThreatLevel = "None" | "Low" | "Medium" | "High" | "Critical";
 
-const PHISHING_KEYWORDS = [
-  "urgent", "verify", "click", "password", "bank", "account", "suspend",
-  "login", "update", "confirm", "limited", "expire", "billing", "payment",
-  "social security", "ssn", "credit card", "wire transfer", "prize",
-  "winner", "congratulations", "free offer", "risk", "alert", "immediately",
-  "action required", "unusual activity", "locked", "disabled", "reset",
-  "activate", "dear customer", "dear user", "valued customer",
-  "bonus", "claim", "gift card", "bitcoin", "crypto", "tax refund",
-  "irs", "inheritance", "million dollars", "nigerian", "prince",
-  "unsubscribe", "do not ignore", "account suspended", "verify now",
-  "click here", "limited time", "act now", "you have been selected",
-  "your account", "confirm your", "update your"
+// =============================================================================
+// TRAINING DATASET (embedded in code, no external files needed)
+// 30 phishing + 30 legitimate examples — used to train the TF-IDF + LR model
+// =============================================================================
+const TRAINING_DATA = [
+  // --- PHISHING (label: 1) ---
+  { text: "URGENT: Your bank account has been suspended. Click here to verify your password immediately or it will be disabled.", label: 1 },
+  { text: "Dear customer, your account will be locked. Login now to confirm your billing information within 24 hours.", label: 1 },
+  { text: "You have won a prize! Claim your gift card now. Click here and verify your social security number.", label: 1 },
+  { text: "Action required: Unusual activity detected on your account. Click to verify your identity immediately.", label: 1 },
+  { text: "Your password will expire in 24 hours. Update your password now to avoid account suspension.", label: 1 },
+  { text: "FREE OFFER! Limited time only. Click here to claim your bitcoin reward. Act now do not ignore!", label: 1 },
+  { text: "Dear valued customer your credit card has been locked. Verify your account to restore access immediately.", label: 1 },
+  { text: "IRS Tax Refund: You are eligible for a tax refund. Click here to claim your money immediately.", label: 1 },
+  { text: "ALERT: Suspicious login detected on your account. Confirm your identity now or your account will be terminated.", label: 1 },
+  { text: "Congratulations! You have been selected for a $1000 gift card. Verify your bank details to receive your prize.", label: 1 },
+  { text: "Your wire transfer of $5000 has been initiated. Click here to cancel if you did not authorize this payment.", label: 1 },
+  { text: "PayPal account is limited. Please verify your information and update your password within 24 hours.", label: 1 },
+  { text: "Dear user we noticed unusual activity. Update your account details at this link immediately to avoid suspension.", label: 1 },
+  { text: "Nigerian prince inheritance: I have $20 million inheritance and need your bank account details urgently.", label: 1 },
+  { text: "Your crypto wallet has been compromised. Reset your password now at http://secure-reset.ru/verify to protect your bitcoin.", label: 1 },
+  { text: "Account alert: Your email account will expire. Click the link to renew your account and verify password.", label: 1 },
+  { text: "You owe unpaid taxes. The IRS will suspend your social security number. Pay immediately to avoid legal action.", label: 1 },
+  { text: "WINNER! You have been selected as a lucky winner. Claim your bonus prize. Send your bank account details now.", label: 1 },
+  { text: "Security alert: Someone tried to login to your account. Click here to verify and reset your password now.", label: 1 },
+  { text: "Final warning: Your account has been flagged for suspicious activity. Verify your credit card details or lose access.", label: 1 },
+  { text: "Your Microsoft account is at risk. Verify your identity by clicking here and confirming your password immediately.", label: 1 },
+  { text: "Urgent bank notification: unusual activity on your account. Log in now to verify transactions or account will be locked.", label: 1 },
+  { text: "Dear customer, as per our records your subscription has expired. Click here to renew and verify billing details.", label: 1 },
+  { text: "You have a pending inheritance of $4.5 million. Contact us with your bank details to claim your funds.", label: 1 },
+  { text: "Limited offer: Free iPhone 15! Click to verify your address and credit card. Only 3 left. Act now!", label: 1 },
+  { text: "Your account will be deleted in 48 hours unless you verify your email and password at this secure link.", label: 1 },
+  { text: "Phishing test: Enter your bank password here. Urgent: your account is at risk from suspicious activity.", label: 1 },
+  { text: "Update required: your payment method has failed. Click here to update your billing information and avoid suspension.", label: 1 },
+  { text: "Dear valued member, your loyalty bonus is ready. Verify your account details to claim $500 bonus credit.", label: 1 },
+  { text: "SYSTEM ALERT: Unauthorized access attempt on your account. Verify identity immediately. Click here to secure your account.", label: 1 },
+
+  // --- LEGITIMATE (label: 0) ---
+  { text: "Hi Sarah, following up on our meeting last Thursday. Please find the Q3 report attached for your review.", label: 0 },
+  { text: "Meeting scheduled tomorrow at 3pm in the main conference room. Please let me know if you have any questions.", label: 0 },
+  { text: "Thank you for your order number 12345. Your package will arrive in 3 to 5 business days.", label: 0 },
+  { text: "Hi team, please review the attached project timeline and provide your feedback by end of week.", label: 0 },
+  { text: "Reminder: quarterly performance review is next Monday. Please come prepared with your accomplishments list.", label: 0 },
+  { text: "Looking forward to our call tomorrow. Let me know if the time still works for you or if you need to reschedule.", label: 0 },
+  { text: "Please find attached the invoice for last month services. Let me know if you have any questions or concerns.", label: 0 },
+  { text: "Hope you had a great vacation! We missed you at the team lunch on Friday. Welcome back to the office.", label: 0 },
+  { text: "The project is on track. We will have all the deliverables ready by end of this week as planned.", label: 0 },
+  { text: "As discussed in our last meeting, here are the action items we agreed on with their respective owners.", label: 0 },
+  { text: "Happy to help with that! Let me know if you need anything else from my end before the deadline.", label: 0 },
+  { text: "The design team has finished the mockups for review. Please share your thoughts and any revisions needed.", label: 0 },
+  { text: "Lunch tomorrow? There is a new Italian place that just opened near the office that everyone is talking about.", label: 0 },
+  { text: "Thank you for your prompt response. We will proceed as discussed in our conversation yesterday.", label: 0 },
+  { text: "Just checking in to see how the onboarding is going. Feel free to reach out anytime if you need support.", label: 0 },
+  { text: "Attached is the draft proposal for your review. Please send your comments by Thursday so we can finalize.", label: 0 },
+  { text: "The conference call has been moved to 2pm. Dial-in details remain the same as before. See you then.", label: 0 },
+  { text: "Great work on the presentation! The client was really impressed with the analysis and the data you provided.", label: 0 },
+  { text: "Can you send me the updated figures for the Q4 budget? I need them before the board meeting on Friday.", label: 0 },
+  { text: "FYI the office will be closed on Monday for the holiday. Enjoy the long weekend and rest well.", label: 0 },
+  { text: "Hi, I wanted to introduce myself. I am the new product manager joining the team starting next Monday.", label: 0 },
+  { text: "Please review the attached contract and let me know if the terms are acceptable before signing.", label: 0 },
+  { text: "The release notes for version 2.4 are attached. Please review and approve before we send to customers.", label: 0 },
+  { text: "Following up on the support ticket you submitted. The engineering team has identified the issue and will fix it.", label: 0 },
+  { text: "Your subscription renewal is coming up on the 15th. You can manage your plan in the account settings.", label: 0 },
+  { text: "Hi John, just wanted to thank you for covering my shift last week. Really appreciate your help.", label: 0 },
+  { text: "The weekly standup is moved from Tuesday to Wednesday this week due to a scheduling conflict.", label: 0 },
+  { text: "I have reviewed the marketing plan and have a few suggestions. Can we schedule a 30 minute call to discuss?", label: 0 },
+  { text: "Sending over the slides from yesterday presentation. Feel free to share with your team as needed.", label: 0 },
+  { text: "Your annual performance review is scheduled for next week. Please complete the self-assessment form beforehand.", label: 0 },
 ];
 
-const PHISHING_PATTERNS = [
-  /click\s+here/i,
-  /verify\s+your/i,
-  /update\s+your/i,
-  /confirm\s+your/i,
-  /account\s+(has\s+been\s+)?(suspended|locked|disabled)/i,
-  /log\s*in\s+to\s+verify/i,
-  /limited\s+time/i,
-  /act\s+now/i,
-  /do\s+not\s+ignore/i,
-  /you\s+have\s+been\s+selected/i,
-  /you\s+(have\s+)?(won|are\s+a\s+winner)/i,
-  /\d+%\s+off/i,
-  /dear\s+(customer|user|member|account\s+holder)/i,
-  /your\s+account\s+(will\s+be|has\s+been)/i,
-  /action\s+required/i,
-  /verify\s+now/i,
-  /respond\s+immediately/i,
+// =============================================================================
+// TF-IDF + LOGISTIC REGRESSION (trained at startup)
+// =============================================================================
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+}
+
+const STOP_WORDS = new Set([
+  "the", "and", "for", "are", "but", "not", "you", "all", "can", "has",
+  "her", "was", "one", "our", "out", "its", "had", "him", "his", "how",
+  "did", "get", "may", "now", "than", "that", "this", "they", "will",
+  "with", "have", "from", "been", "your", "their", "what", "when", "who",
+  "also", "into", "more", "over", "same", "then", "them", "were", "each",
+  "she", "him", "via", "per"
+]);
+
+function buildVocabulary(data: typeof TRAINING_DATA): string[] {
+  const docFreq: Record<string, number> = {};
+  for (const item of data) {
+    const tokens = new Set(tokenize(item.text));
+    for (const t of tokens) {
+      docFreq[t] = (docFreq[t] || 0) + 1;
+    }
+  }
+  // Keep terms appearing in at least 2 documents (reduces noise)
+  return Object.keys(docFreq).filter((w) => docFreq[w] >= 2).sort();
+}
+
+function computeIdf(vocab: string[], data: typeof TRAINING_DATA): Record<string, number> {
+  const N = data.length;
+  const idf: Record<string, number> = {};
+  for (const term of vocab) {
+    const df = data.filter((d) => tokenize(d.text).includes(term)).length;
+    idf[term] = Math.log((N + 1) / (df + 1)) + 1; // smoothed IDF
+  }
+  return idf;
+}
+
+function tfidfVector(text: string, vocab: string[], idf: Record<string, number>): number[] {
+  const tokens = tokenize(text);
+  const tf: Record<string, number> = {};
+  for (const t of tokens) tf[t] = (tf[t] || 0) + 1;
+  const total = Math.max(tokens.length, 1);
+  return vocab.map((term) => ((tf[term] || 0) / total) * (idf[term] || 0));
+}
+
+function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
+}
+
+interface LogisticModel {
+  weights: number[];
+  bias: number;
+  vocab: string[];
+  idf: Record<string, number>;
+}
+
+function trainModel(): LogisticModel {
+  const vocab = buildVocabulary(TRAINING_DATA);
+  const idf = computeIdf(vocab, TRAINING_DATA);
+
+  const features = TRAINING_DATA.map((d) => tfidfVector(d.text, vocab, idf));
+  const labels = TRAINING_DATA.map((d) => d.label);
+
+  const weights = new Array(vocab.length).fill(0);
+  let bias = 0;
+  const lr = 0.5;
+  const epochs = 500;
+
+  for (let epoch = 0; epoch < epochs; epoch++) {
+    const rate = lr * Math.exp(-epoch / 200); // learning rate decay
+    for (let i = 0; i < features.length; i++) {
+      const z = features[i].reduce((s, x, j) => s + x * weights[j], bias);
+      const pred = sigmoid(z);
+      const error = pred - labels[i];
+      for (let j = 0; j < weights.length; j++) {
+        weights[j] -= rate * error * features[i][j] + 0.001 * weights[j]; // L2 reg
+      }
+      bias -= rate * error;
+    }
+  }
+
+  return { weights, bias, vocab, idf };
+}
+
+// Train once at module load (fast — <100ms on 30 samples)
+const MODEL: LogisticModel = trainModel();
+
+function getMlScore(text: string): number {
+  const vec = tfidfVector(text, MODEL.vocab, MODEL.idf);
+  const z = vec.reduce((s, x, j) => s + x * MODEL.weights[j], MODEL.bias);
+  const prob = sigmoid(z);
+  return Math.round(prob * 100);
+}
+
+// =============================================================================
+// RULE-BASED SCORING — Additive (each match = 10–20 points, max 100)
+// =============================================================================
+
+const RULE_KEYWORDS: { pattern: string | RegExp; points: number }[] = [
+  { pattern: "urgent", points: 15 },
+  { pattern: "verify", points: 12 },
+  { pattern: "click here", points: 18 },
+  { pattern: "password", points: 12 },
+  { pattern: "bank account", points: 20 },
+  { pattern: "suspend", points: 15 },
+  { pattern: "suspended", points: 15 },
+  { pattern: "account locked", points: 18 },
+  { pattern: "account disabled", points: 18 },
+  { pattern: "immediately", points: 10 },
+  { pattern: "within 24 hours", points: 15 },
+  { pattern: "act now", points: 12 },
+  { pattern: "do not ignore", points: 14 },
+  { pattern: "confirm your", points: 12 },
+  { pattern: "update your", points: 10 },
+  { pattern: "social security", points: 20 },
+  { pattern: "credit card", points: 15 },
+  { pattern: "wire transfer", points: 18 },
+  { pattern: "gift card", points: 15 },
+  { pattern: "claim your", points: 12 },
+  { pattern: "prize", points: 13 },
+  { pattern: "winner", points: 13 },
+  { pattern: "congratulations", points: 10 },
+  { pattern: "bitcoin", points: 15 },
+  { pattern: "crypto", points: 12 },
+  { pattern: "inheritance", points: 16 },
+  { pattern: "nigerian", points: 20 },
+  { pattern: "tax refund", points: 16 },
+  { pattern: "dear customer", points: 10 },
+  { pattern: "dear user", points: 10 },
+  { pattern: "valued customer", points: 10 },
+  { pattern: /https?:\/\//i, points: 15 },
+  { pattern: /www\.\S+/i, points: 12 },
+  { pattern: /\d+%\s+off/i, points: 8 },
+  { pattern: /action\s+required/i, points: 14 },
+  { pattern: /unusual\s+activity/i, points: 16 },
+  { pattern: /verify\s+your\s+(identity|account|email|password)/i, points: 18 },
+  { pattern: /log\s*in\s+(now|to\s+verify)/i, points: 14 },
+  { pattern: /limited\s+time/i, points: 10 },
 ];
 
-const URL_PATTERN = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+/gi;
-
-const SAFE_INDICATORS = [
-  /meeting\s+(scheduled|at|on)/i,
-  /kind\s+regards/i,
-  /best\s+regards/i,
-  /sincerely/i,
-  /please\s+find\s+attached/i,
-  /as\s+discussed/i,
-  /following\s+up/i,
-  /let\s+me\s+know\s+if/i,
-  /looking\s+forward/i,
-  /thank\s+you\s+for\s+your/i,
-  /hope\s+this\s+(email\s+)?finds\s+you/i,
-  /per\s+our\s+(last\s+)?conversation/i,
+const SAFE_DEDUCTIONS: { pattern: string | RegExp; points: number }[] = [
+  { pattern: /meeting\s+(scheduled|at|on)/i, points: 12 },
+  { pattern: /kind\s+regards/i, points: 8 },
+  { pattern: /best\s+regards/i, points: 8 },
+  { pattern: /sincerely/i, points: 6 },
+  { pattern: /please\s+find\s+attached/i, points: 10 },
+  { pattern: /as\s+discussed/i, points: 10 },
+  { pattern: /following\s+up/i, points: 8 },
+  { pattern: /let\s+me\s+know\s+if/i, points: 10 },
+  { pattern: /looking\s+forward/i, points: 8 },
+  { pattern: /quarterly\s+review/i, points: 12 },
+  { pattern: /team\s+(lunch|meeting|call)/i, points: 10 },
+  { pattern: /project\s+(timeline|update|status)/i, points: 12 },
 ];
 
-const AI_FORMAL_PHRASES = [
-  /i\s+hope\s+this\s+(email\s+)?finds\s+you\s+well/i,
-  /i\s+am\s+writing\s+to\s+(inform|notify|advise|bring\s+to\s+your\s+attention)/i,
-  /please\s+do\s+not\s+hesitate\s+to\s+contact/i,
-  /should\s+you\s+(have\s+any|require\s+any|need\s+any)\s+(questions|assistance|further)/i,
-  /we\s+would\s+like\s+to\s+(bring\s+to\s+your|draw\s+your)/i,
-  /as\s+per\s+(our\s+records|our\s+policy|your\s+request)/i,
-  /kindly\s+(note|be\s+informed|be\s+advised)/i,
-  /please\s+be\s+informed\s+that/i,
-  /we\s+regret\s+to\s+inform\s+you/i,
-  /this\s+is\s+to\s+(inform|notify)\s+you/i,
-  /we\s+wish\s+to\s+inform/i,
-  /at\s+your\s+earliest\s+convenience/i,
-  /we\s+appreciate\s+your\s+(prompt|immediate)\s+(attention|response)/i,
-  /thank\s+you\s+for\s+your\s+(prompt|immediate)\s+(response|attention)/i,
-  /dear\s+(valued\s+)?(customer|client|user|member|sir|ma'am)/i,
+function getRuleScore(text: string): number {
+  const lower = text.toLowerCase();
+  let score = 0;
+
+  for (const rule of RULE_KEYWORDS) {
+    const matches =
+      typeof rule.pattern === "string"
+        ? lower.includes(rule.pattern)
+        : rule.pattern.test(text);
+    if (matches) score += rule.points;
+  }
+
+  for (const rule of SAFE_DEDUCTIONS) {
+    const matches =
+      typeof rule.pattern === "string"
+        ? lower.includes(rule.pattern)
+        : rule.pattern.test(text);
+    if (matches) score -= rule.points;
+  }
+
+  return Math.min(Math.max(score, 0), 100);
+}
+
+// =============================================================================
+// AI PATTERN DETECTION
+// =============================================================================
+
+const AI_PHRASES: { pattern: RegExp; points: number }[] = [
+  { pattern: /i\s+hope\s+this\s+(email\s+|message\s+)?finds\s+you\s+well/i, points: 20 },
+  { pattern: /i\s+am\s+writing\s+to\s+(inform|notify|advise|bring)/i, points: 18 },
+  { pattern: /please\s+do\s+not\s+hesitate\s+to\s+contact/i, points: 16 },
+  { pattern: /should\s+you\s+(have|require|need)\s+any\s+(questions|assistance|further)/i, points: 18 },
+  { pattern: /kindly\s+(note|be\s+informed|be\s+advised)/i, points: 16 },
+  { pattern: /please\s+be\s+informed\s+that/i, points: 18 },
+  { pattern: /we\s+regret\s+to\s+inform\s+you/i, points: 16 },
+  { pattern: /this\s+is\s+to\s+(inform|notify)\s+you/i, points: 18 },
+  { pattern: /at\s+your\s+earliest\s+convenience/i, points: 14 },
+  { pattern: /we\s+appreciate\s+your\s+(prompt|immediate)\s+(attention|response)/i, points: 16 },
+  { pattern: /dear\s+(valued\s+)?(customer|client|user|member|sir|ma'am)/i, points: 14 },
+  { pattern: /it\s+has\s+come\s+to\s+our\s+attention/i, points: 18 },
+  { pattern: /we\s+have\s+noticed\s+(unusual|suspicious)\s+activity/i, points: 16 },
+  { pattern: /for\s+your\s+(security|protection|safety),?\s+we/i, points: 14 },
+  { pattern: /as\s+per\s+(our\s+records|our\s+policy|your\s+request)/i, points: 14 },
+  { pattern: /in\s+accordance\s+with\s+our/i, points: 12 },
+  { pattern: /pursuant\s+to\s+our/i, points: 14 },
+  { pattern: /rest\s+assured\s+that/i, points: 12 },
+  { pattern: /we\s+take\s+your\s+(privacy|security)\s+very\s+seriously/i, points: 14 },
+  { pattern: /going\s+forward[,\s]/i, points: 10 },
 ];
 
-const AI_GENERIC_PATTERNS = [
-  /your\s+(account|profile|subscription)\s+(has\s+been|is\s+(now|currently))/i,
-  /rest\s+assured\s+that/i,
-  /we\s+take\s+your\s+(privacy|security)\s+very\s+seriously/i,
-  /pursuant\s+to\s+our\s+(policy|terms|agreement)/i,
-  /in\s+accordance\s+with\s+our/i,
-  /going\s+forward\,/i,
-  /it\s+has\s+come\s+to\s+our\s+attention/i,
-  /we\s+have\s+noticed\s+(unusual|suspicious)\s+activity/i,
-  /for\s+your\s+(security|protection|safety),?\s+we/i,
-];
+function getAiScore(text: string): number {
+  let score = 0;
+
+  for (const p of AI_PHRASES) {
+    if (p.pattern.test(text)) score += p.points;
+  }
+
+  // No personal name greeting (+10 if starts with "Dear" without first name)
+  if (/^dear\s+(customer|user|member|valued)/i.test(text.trim())) score += 10;
+
+  // Uniform sentence length (AI tends to write very uniform sentences)
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 10);
+  if (sentences.length >= 3) {
+    const lengths = sentences.map((s) => s.trim().split(/\s+/).length);
+    const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const variance = lengths.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / lengths.length;
+    const stdDev = Math.sqrt(variance);
+    if (stdDev < 5 && mean > 8) score += 12; // very uniform → likely AI
+  }
+
+  // High formal vocabulary ratio (long words)
+  const words = text.split(/\s+/);
+  const longWords = words.filter((w) => w.replace(/[^a-z]/gi, "").length > 9).length;
+  const ratio = longWords / Math.max(words.length, 1);
+  score += Math.round(Math.min(ratio * 40, 15));
+
+  // Penalize for personal touches (names, casual phrases)
+  if (/\b(hi|hey|hello)\s+[A-Z][a-z]+/i.test(text)) score -= 15;
+  if (/(thanks|cheers|talk\s+soon|catch\s+you\s+later)/i.test(text)) score -= 10;
+
+  return Math.min(Math.max(score, 0), 100);
+}
+
+// =============================================================================
+// URL EXTRACTION
+// =============================================================================
+
+const URL_REGEX = /https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/gi;
 
 function extractUrls(text: string): string[] {
-  const matches = text.match(URL_PATTERN) || [];
+  const matches = text.match(URL_REGEX) || [];
+  URL_REGEX.lastIndex = 0;
   return [...new Set(matches)].slice(0, 10);
 }
 
+// =============================================================================
+// KEYWORD EXTRACTION
+// =============================================================================
+
+const KEYWORD_LIST = [
+  "urgent", "verify", "click here", "password", "bank account", "suspend",
+  "suspended", "login", "update your", "confirm your", "limited time", "expire",
+  "billing", "payment", "social security", "ssn", "credit card", "wire transfer",
+  "prize", "winner", "congratulations", "free offer", "alert", "immediately",
+  "action required", "unusual activity", "locked", "disabled", "reset",
+  "activate", "dear customer", "dear user", "valued customer", "bonus", "claim",
+  "gift card", "bitcoin", "crypto", "tax refund", "irs", "inheritance", "nigerian"
+];
+
 function extractKeywords(text: string): string[] {
   const lower = text.toLowerCase();
-  const found: string[] = [];
-  for (const kw of PHISHING_KEYWORDS) {
-    if (lower.includes(kw)) {
-      found.push(kw);
-    }
-  }
-  return [...new Set(found)];
+  return [...new Set(KEYWORD_LIST.filter((kw) => lower.includes(kw)))];
 }
 
-function computeRuleScore(text: string): number {
-  const lower = text.toLowerCase();
-  const matchedKeywords = PHISHING_KEYWORDS.filter(kw => lower.includes(kw));
-  const keywordScore = Math.min(matchedKeywords.length / 6, 1) * 0.55;
+// =============================================================================
+// TONE DETECTION
+// =============================================================================
 
-  let patternMatches = 0;
-  for (const pat of PHISHING_PATTERNS) {
-    if (pat.test(text)) patternMatches++;
-  }
-  const patternScore = Math.min(patternMatches / 4, 1) * 0.45;
+function detectTone(text: string, aiScore: number, mlScore: number, ruleScore: number): string {
+  const hasThreats = /suspend|terminate|delete|disable|close your account|legal action/i.test(text);
+  const hasUrgency = /urgent|immediately|now|asap|within 24|don.t delay|limited time/i.test(text);
+  const hasFormal = aiScore > 35;
+  const hasFriendly = /hope you|looking forward|great to|happy to|excited|cheers/i.test(text);
+  const hasCasual = /\b(hi|hey|haha|lol|btw|fyi)\b/i.test(text);
 
-  let safeReduction = 0;
-  for (const pat of SAFE_INDICATORS) {
-    if (pat.test(text)) safeReduction += 0.08;
-  }
-
-  const hasUrl = URL_PATTERN.test(text) ? 0.1 : 0;
-  URL_PATTERN.lastIndex = 0;
-
-  return Math.min(Math.max(keywordScore + patternScore + hasUrl - safeReduction, 0), 1);
-}
-
-function computeMlScore(text: string): number {
-  const lower = text.toLowerCase();
-  const words = lower.split(/\s+/).filter(w => w.length > 2);
-  const totalWords = Math.max(words.length, 1);
-
-  const phishingWordSet = new Set(PHISHING_KEYWORDS);
-  let phishingWordCount = 0;
-  for (const w of words) {
-    if (phishingWordSet.has(w)) phishingWordCount++;
-  }
-
-  const wordFrequencyScore = Math.min((phishingWordCount / totalWords) * 10, 0.75);
-  URL_PATTERN.lastIndex = 0;
-  const hasUrl = URL_PATTERN.test(text) ? 0.15 : 0;
-  URL_PATTERN.lastIndex = 0;
-  const exclamationScore = Math.min((text.match(/!/g) || []).length * 0.05, 0.15);
-  const capsWords = text.split(/\s+/).filter(w => w === w.toUpperCase() && w.length > 3).length;
-  const capsScore = Math.min(capsWords * 0.04, 0.12);
-
-  let safeReduction = 0;
-  for (const pat of SAFE_INDICATORS) {
-    if (pat.test(text)) safeReduction += 0.1;
-  }
-
-  return Math.min(Math.max(wordFrequencyScore + hasUrl + exclamationScore + capsScore - safeReduction, 0), 1);
-}
-
-function computeAiScore(text: string): number {
-  let score = 0;
-
-  let formalCount = 0;
-  for (const pat of AI_FORMAL_PHRASES) {
-    if (pat.test(text)) formalCount++;
-  }
-  score += Math.min(formalCount / 3, 1) * 0.45;
-
-  let genericCount = 0;
-  for (const pat of AI_GENERIC_PATTERNS) {
-    if (pat.test(text)) genericCount++;
-  }
-  score += Math.min(genericCount / 2, 1) * 0.3;
-
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
-  if (sentences.length >= 3) {
-    const lengths = sentences.map(s => s.trim().split(/\s+/).length);
-    const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-    const variance = lengths.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / lengths.length;
-    const stdDev = Math.sqrt(variance);
-    const uniformity = Math.max(0, 1 - stdDev / 8);
-    score += uniformity * 0.15;
-  }
-
-  const hasPersonalName = /\b(hi|hello|hey)\s+[A-Z][a-z]+/i.test(text);
-  if (!hasPersonalName) score += 0.1;
-
-  const hasDearGeneric = /dear\s+(customer|user|member|valued)/i.test(text);
-  if (hasDearGeneric) score += 0.15;
-
-  const words = text.split(/\s+/);
-  const longWords = words.filter(w => w.length > 9).length;
-  const formalVocabRatio = longWords / Math.max(words.length, 1);
-  score += Math.min(formalVocabRatio * 2, 0.15);
-
-  return Math.min(Math.max(score, 0), 1);
-}
-
-function detectTone(text: string, aiScore: number, phishingScore: number): string {
-  const hasUrgency = /urgent|immediately|now|asap|right away|as soon as possible|don't delay/i.test(text);
-  const hasFormal = aiScore > 0.35;
-  const hasThreats = /suspend|terminate|delete|disable|close your account/i.test(text);
-  const hasFriendly = /hope you|looking forward|great to|happy to|excited/i.test(text);
-
-  if (hasThreats && phishingScore > 0.5) return "Threatening / Manipulative";
-  if (hasUrgency && phishingScore > 0.3) return "Urgent / Pressuring";
-  if (hasFormal && aiScore > 0.5) return "Formal / AI-Structured";
+  if (hasThreats && ruleScore > 50) return "Threatening / Manipulative";
+  if (hasUrgency && ruleScore > 40) return "Urgent / Pressuring";
+  if (hasFormal && aiScore > 50) return "Formal / AI-Structured";
   if (hasFormal && hasUrgency) return "Formal / Urgent";
-  if (hasFriendly) return "Friendly / Casual";
+  if (hasCasual) return "Casual / Conversational";
+  if (hasFriendly) return "Friendly / Professional";
   if (hasFormal) return "Formal / Professional";
   return "Neutral";
 }
+
+// =============================================================================
+// EXPLANATION + SUGGESTIONS
+// =============================================================================
 
 function buildExplanation(
   prediction: PredictionClass,
@@ -216,65 +386,52 @@ function buildExplanation(
   urls: string[],
   aiScore: number,
   ruleScore: number,
+  mlScore: number,
   tone: string
 ): string {
   if (prediction === "Phishing") {
-    const parts: string[] = ["This email exhibits strong indicators of a phishing attack."];
-    if (keywords.length > 0) {
-      parts.push(`Suspicious keywords detected: ${keywords.slice(0, 5).join(", ")}.`);
-    }
-    if (urls.length > 0) {
-      parts.push(`Contains ${urls.length} embedded URL(s) that may redirect to malicious sites.`);
-    }
-    if (tone.includes("Urgent") || tone.includes("Threatening")) {
-      parts.push("The tone uses urgency and pressure tactics to manipulate the recipient.");
-    }
+    const parts: string[] = ["This email exhibits strong phishing indicators."];
+    if (keywords.length > 0) parts.push(`Suspicious keywords detected: ${keywords.slice(0, 5).join(", ")}.`);
+    if (urls.length > 0) parts.push(`Contains ${urls.length} suspicious URL(s) that may redirect to malicious sites.`);
+    if (ruleScore > 60) parts.push("High rule-based score — multiple threat patterns matched.");
+    if (mlScore > 70) parts.push("ML model flagged this as high-risk based on phishing vocabulary patterns.");
+    if (tone.includes("Urgent") || tone.includes("Threatening")) parts.push("Uses urgency and pressure tactics to manipulate the recipient.");
     return parts.join(" ");
   }
 
   if (prediction === "AI-Generated Suspicious") {
     const parts: string[] = ["This email appears to be generated or heavily assisted by AI."];
-    if (aiScore > 0.6) {
-      parts.push("It contains overly formal phrasing, generic greetings, and uniform sentence structure typical of LLM output.");
-    }
-    if (ruleScore > 0.2) {
-      parts.push("Some phishing-adjacent keywords are also present, suggesting possible manipulation intent.");
-    }
+    if (aiScore > 60) parts.push("Contains overly formal phrasing, generic salutations, and uniform sentence structure typical of LLM output.");
+    if (ruleScore > 20) parts.push("Some phishing-adjacent language is also present, suggesting possible manipulation intent.");
     parts.push("Verify the sender's identity before taking any action.");
     return parts.join(" ");
   }
 
   const parts: string[] = ["This email appears to be legitimate."];
-  if (keywords.length === 0 && urls.length === 0) {
-    parts.push("No suspicious keywords or URLs were detected.");
-  }
-  parts.push("No significant phishing or AI-generated content indicators were found.");
+  if (keywords.length === 0 && urls.length === 0) parts.push("No suspicious keywords or URLs detected.");
+  if (mlScore < 20 && ruleScore < 15) parts.push("ML model and rule engine both returned low risk scores.");
   return parts.join(" ");
 }
 
-function buildSuggestions(prediction: PredictionClass, urls: string[], keywords: string[]): string[] {
+function buildSuggestions(prediction: PredictionClass, urls: string[]): string[] {
   if (prediction === "Phishing") {
-    const suggestions = [
-      "Do not click any links or download attachments from this email.",
-      "Report this email to your IT security team or email provider.",
+    const s = [
+      "Do not click any links or download attachments in this email.",
+      "Report this email to your IT security team or email provider as phishing.",
       "Delete the email immediately without responding.",
-      "If you already clicked a link, change your passwords immediately and run a malware scan.",
     ];
-    if (urls.length > 0) {
-      suggestions.push("Do not visit any URLs contained in this message.");
-    }
-    return suggestions;
+    if (urls.length > 0) s.push("Do not visit any of the URLs contained in this message.");
+    s.push("If you already clicked a link, change your passwords and run an antivirus scan immediately.");
+    return s;
   }
-
   if (prediction === "AI-Generated Suspicious") {
     return [
-      "Verify the sender's identity through a separate, trusted communication channel.",
+      "Verify the sender's identity through a separate, trusted channel (phone or known email).",
       "Do not provide personal information or credentials in response to this email.",
-      "Contact the purported sender directly using known contact details, not reply-to addresses.",
-      "Be cautious — AI-generated emails are increasingly used for social engineering.",
+      "Contact the purported sender directly using known contact details — not the reply-to address.",
+      "AI-generated emails are increasingly used for social engineering — treat this with caution.",
     ];
   }
-
   return [
     "This email appears safe. Continue with normal caution.",
     "Always verify unexpected requests even from known senders.",
@@ -282,18 +439,26 @@ function buildSuggestions(prediction: PredictionClass, urls: string[], keywords:
   ];
 }
 
-function determineThreatLevel(prediction: PredictionClass, confidence: number): ThreatLevel {
+function determineThreatLevel(prediction: PredictionClass, ruleScore: number, mlScore: number): ThreatLevel {
   if (prediction === "Phishing") {
-    if (confidence >= 90) return "Critical";
-    if (confidence >= 75) return "High";
+    const combined = Math.max(ruleScore, mlScore);
+    if (combined >= 85) return "Critical";
+    if (combined >= 70) return "High";
     return "Medium";
   }
   if (prediction === "AI-Generated Suspicious") {
-    if (confidence >= 85) return "Medium";
-    return "Low";
+    return "Medium";
   }
   return "None";
 }
+
+// =============================================================================
+// MAIN ANALYSIS FUNCTION — 3-class classification
+// Decision logic (per spec):
+//   rule_score > 60 OR ml_score > 70 → Phishing
+//   ai_score  > 50                   → AI-Generated Suspicious
+//   else                             → Legitimate
+// =============================================================================
 
 interface AnalysisResult {
   prediction: PredictionClass;
@@ -310,42 +475,42 @@ interface AnalysisResult {
 }
 
 function analyze(text: string): AnalysisResult {
-  const ruleScore = computeRuleScore(text);
-  const mlScore = computeMlScore(text);
-  const aiScore = computeAiScore(text);
+  const mlScore = getMlScore(text);
+  const ruleScore = getRuleScore(text);
+  const aiScore = getAiScore(text);
   const keywords = extractKeywords(text);
   const urls = extractUrls(text);
 
-  const phishingScore = ruleScore * 0.55 + mlScore * 0.45;
-
   let prediction: PredictionClass;
-  let rawConfidence: number;
+  let rawConf: number;
 
-  if (phishingScore >= 0.28) {
+  if (ruleScore > 60 || mlScore > 70) {
     prediction = "Phishing";
-    rawConfidence = 0.5 + phishingScore * 0.49;
-  } else if (aiScore >= 0.35 && phishingScore < 0.28) {
+    rawConf = Math.max(ruleScore, mlScore);
+  } else if (aiScore > 50) {
     prediction = "AI-Generated Suspicious";
-    rawConfidence = 0.5 + aiScore * 0.45;
+    rawConf = aiScore;
   } else {
     prediction = "Legitimate";
-    const legitimacyScore = 1 - Math.max(phishingScore, aiScore * 0.5);
-    rawConfidence = 0.5 + legitimacyScore * 0.45;
+    // Confidence in legitimacy = inverse of the highest risk signal
+    const maxRisk = Math.max(ruleScore, mlScore, aiScore);
+    rawConf = 100 - maxRisk * 0.5;
   }
 
-  const confidence = Math.round(Math.min(Math.max(rawConfidence, 0.5), 0.99) * 100);
-  const threat_level = determineThreatLevel(prediction, confidence);
-  const tone = detectTone(text, aiScore, phishingScore);
-  const explanation = buildExplanation(prediction, keywords, urls, aiScore, ruleScore, tone);
-  const suggestions = buildSuggestions(prediction, urls, keywords);
+  // Clamp confidence to 51–99 (never 0% or 100% — honest uncertainty)
+  const confidence = Math.min(Math.max(Math.round(rawConf), 51), 99);
+  const threat_level = determineThreatLevel(prediction, ruleScore, mlScore);
+  const tone = detectTone(text, aiScore, mlScore, ruleScore);
+  const explanation = buildExplanation(prediction, keywords, urls, aiScore, ruleScore, mlScore, tone);
+  const suggestions = buildSuggestions(prediction, urls);
 
   return {
     prediction,
     confidence,
     threat_level,
-    ml_score: Math.round(mlScore * 100),
-    rule_score: Math.round(ruleScore * 100),
-    ai_score: Math.round(aiScore * 100),
+    ml_score: mlScore,
+    rule_score: ruleScore,
+    ai_score: aiScore,
     keywords,
     urls,
     tone,
@@ -354,13 +519,16 @@ function analyze(text: string): AnalysisResult {
   };
 }
 
+// =============================================================================
+// ROUTES
+// =============================================================================
+
 router.post("/predict", async (req: Request, res: Response) => {
   const parsed = PredictPhishingBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request: text field is required" });
     return;
   }
-
   const { text } = parsed.data;
   if (!text || text.trim().length === 0) {
     res.status(400).json({ error: "Text cannot be empty" });
@@ -403,7 +571,7 @@ router.get("/history", async (req: Request, res: Response) => {
       .orderBy(desc(predictionsTable.created_at))
       .limit(limit);
 
-    const items = rows.map(row => ({
+    const items = rows.map((row) => ({
       id: row.id,
       text_preview: row.text_preview,
       prediction: row.prediction as PredictionClass,
