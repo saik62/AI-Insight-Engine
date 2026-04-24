@@ -28,8 +28,14 @@ function loadTrainingData(): TrainingRow[] {
   for (const p of candidates) {
     try {
       const raw = readFileSync(p, "utf8");
-      const parsed = JSON.parse(raw) as TrainingRow[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      const parsed = JSON.parse(raw) as Array<{ text: string; label: number }>;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Dataset has 3 classes (0=Legitimate, 1=Phishing, 2=AI-Generated).
+        // The ML model is BINARY phishing vs not-phishing — so AI-Generated rows
+        // are mapped to label=0 here (not phishing). The AI-Generated class is
+        // detected separately downstream via the rule-based AI score.
+        return parsed.map((r) => ({ text: r.text, label: r.label === 1 ? 1 : 0 }));
+      }
     } catch {
       // try next
     }
