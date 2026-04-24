@@ -4,6 +4,8 @@ import { db } from "@workspace/db";
 import { predictionsTable } from "@workspace/db";
 import { desc, count, avg, sql } from "drizzle-orm";
 import { PredictPhishingBody, GetPredictionHistoryQueryParams } from "@workspace/api-zod";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 const router = Router();
 
@@ -11,10 +13,31 @@ type PredictionClass = "Legitimate" | "AI-Generated Suspicious" | "Phishing";
 type ThreatLevel = "None" | "Low" | "Medium" | "High" | "Critical";
 
 // =============================================================================
-// TRAINING DATASET (embedded in code, no external files needed)
-// 30 phishing + 30 legitimate examples — used to train the TF-IDF + LR model
+// TRAINING DATASET — loaded from JSON at startup
+// 4000 samples (2000 phishing + 2000 legitimate) used to train TF-IDF + LR
 // =============================================================================
-const TRAINING_DATA = [
+type TrainingRow = { text: string; label: number };
+
+function loadTrainingData(): TrainingRow[] {
+  // Try multiple candidate paths so it works in dev (tsx) and prod (esbuild bundle)
+  const candidates = [
+    resolve(process.cwd(), "artifacts/api-server/data/training_dataset.json"),
+    resolve(process.cwd(), "data/training_dataset.json"),
+    resolve(process.cwd(), "../api-server/data/training_dataset.json"),
+  ];
+  for (const p of candidates) {
+    try {
+      const raw = readFileSync(p, "utf8");
+      const parsed = JSON.parse(raw) as TrainingRow[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+      // try next
+    }
+  }
+  return FALLBACK_TRAINING_DATA;
+}
+
+const FALLBACK_TRAINING_DATA: TrainingRow[] = [
   // --- PHISHING (label: 1) ---
   { text: "URGENT: Your bank account has been suspended. Click here to verify your password immediately or it will be disabled.", label: 1 },
   { text: "Dear customer, your account will be locked. Login now to confirm your billing information within 24 hours.", label: 1 },
@@ -101,7 +124,12 @@ const STOP_WORDS = new Set([
   "she", "him", "via", "per"
 ]);
 
-function buildVocabulary(data: typeof TRAINING_DATA): string[] {
+// Single-pass: compute vocabulary AND document frequencies together
+function buildVocabAndDf(
+  data: TrainingRow[],
+  minDf = 3,
+  maxVocab = 3000,
+): { vocab: string[]; docFreq: Record<string, number> } {
   const docFreq: Record<string, number> = {};
   for (const item of data) {
     const tokens = new Set(tokenize(item.text));
@@ -109,29 +137,44 @@ function buildVocabulary(data: typeof TRAINING_DATA): string[] {
       docFreq[t] = (docFreq[t] || 0) + 1;
     }
   }
-  // Keep terms appearing in at least 2 documents (reduces noise)
-  return Object.keys(docFreq).filter((w) => docFreq[w] >= 2).sort();
+  // Keep terms appearing in at least minDf documents, then cap vocab size
+  const vocab = Object.keys(docFreq)
+    .filter((w) => docFreq[w] >= minDf)
+    .sort((a, b) => docFreq[b] - docFreq[a])
+    .slice(0, maxVocab)
+    .sort();
+  return { vocab, docFreq };
 }
 
-function computeIdf(vocab: string[], data: typeof TRAINING_DATA): Record<string, number> {
-  const N = data.length;
+function computeIdfFromDf(vocab: string[], docFreq: Record<string, number>, N: number): Record<string, number> {
   const idf: Record<string, number> = {};
   for (const term of vocab) {
-    const df = data.filter((d) => tokenize(d.text).includes(term)).length;
-    idf[term] = Math.log((N + 1) / (df + 1)) + 1; // smoothed IDF
+    idf[term] = Math.log((N + 1) / ((docFreq[term] || 0) + 1)) + 1;
   }
   return idf;
 }
 
-function tfidfVector(text: string, vocab: string[], idf: Record<string, number>): number[] {
+// Sparse TF-IDF vector: returns only non-zero entries (vocab index → value)
+function sparseTfidf(text: string, vocabIndex: Record<string, number>, idf: Record<string, number>): { idx: number[]; val: number[] } {
   const tokens = tokenize(text);
   const tf: Record<string, number> = {};
   for (const t of tokens) tf[t] = (tf[t] || 0) + 1;
   const total = Math.max(tokens.length, 1);
-  return vocab.map((term) => ((tf[term] || 0) / total) * (idf[term] || 0));
+  const idx: number[] = [];
+  const val: number[] = [];
+  for (const term in tf) {
+    const j = vocabIndex[term];
+    if (j !== undefined) {
+      idx.push(j);
+      val.push((tf[term] / total) * (idf[term] || 0));
+    }
+  }
+  return { idx, val };
 }
 
 function sigmoid(x: number): number {
+  if (x > 35) return 1;
+  if (x < -35) return 0;
   return 1 / (1 + Math.exp(-x));
 }
 
@@ -139,43 +182,58 @@ interface LogisticModel {
   weights: number[];
   bias: number;
   vocab: string[];
+  vocabIndex: Record<string, number>;
   idf: Record<string, number>;
 }
 
 function trainModel(): LogisticModel {
-  const vocab = buildVocabulary(TRAINING_DATA);
-  const idf = computeIdf(vocab, TRAINING_DATA);
+  const data = loadTrainingData();
+  const { vocab, docFreq } = buildVocabAndDf(data, 3, 3000);
+  const idf = computeIdfFromDf(vocab, docFreq, data.length);
 
-  const features = TRAINING_DATA.map((d) => tfidfVector(d.text, vocab, idf));
-  const labels = TRAINING_DATA.map((d) => d.label);
+  const vocabIndex: Record<string, number> = {};
+  vocab.forEach((w, i) => { vocabIndex[w] = i; });
+
+  // Pre-compute sparse features once
+  const features = data.map((d) => sparseTfidf(d.text, vocabIndex, idf));
+  const labels = data.map((d) => d.label);
 
   const weights = new Array(vocab.length).fill(0);
   let bias = 0;
   const lr = 0.5;
-  const epochs = 500;
+  const epochs = 100;
+  const l2 = 0.0005;
 
+  // Stochastic gradient descent over sparse vectors → very fast
   for (let epoch = 0; epoch < epochs; epoch++) {
-    const rate = lr * Math.exp(-epoch / 200); // learning rate decay
+    const rate = lr * Math.exp(-epoch / 50);
     for (let i = 0; i < features.length; i++) {
-      const z = features[i].reduce((s, x, j) => s + x * weights[j], bias);
+      const { idx, val } = features[i];
+      let z = bias;
+      for (let k = 0; k < idx.length; k++) z += val[k] * weights[idx[k]];
       const pred = sigmoid(z);
       const error = pred - labels[i];
-      for (let j = 0; j < weights.length; j++) {
-        weights[j] -= rate * error * features[i][j] + 0.001 * weights[j]; // L2 reg
+      for (let k = 0; k < idx.length; k++) {
+        const j = idx[k];
+        weights[j] -= rate * (error * val[k] + l2 * weights[j]);
       }
       bias -= rate * error;
     }
   }
 
-  return { weights, bias, vocab, idf };
+  return { weights, bias, vocab, vocabIndex, idf };
 }
 
-// Train once at module load (fast — <100ms on 30 samples)
+// Train once at module load
+const MODEL_START = Date.now();
 const MODEL: LogisticModel = trainModel();
+// eslint-disable-next-line no-console
+console.log(`[phishing-detector] ML model trained on ${loadTrainingData().length} samples, vocab=${MODEL.vocab.length}, ${Date.now() - MODEL_START}ms`);
 
 function getMlScore(text: string): number {
-  const vec = tfidfVector(text, MODEL.vocab, MODEL.idf);
-  const z = vec.reduce((s, x, j) => s + x * MODEL.weights[j], MODEL.bias);
+  const { idx, val } = sparseTfidf(text, MODEL.vocabIndex, MODEL.idf);
+  let z = MODEL.bias;
+  for (let k = 0; k < idx.length; k++) z += val[k] * MODEL.weights[idx[k]];
   const prob = sigmoid(z);
   return Math.round(prob * 100);
 }
