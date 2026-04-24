@@ -1,0 +1,242 @@
+[
+  {
+    "text": "URGENT: Your bank account has been suspended. Click here to verify your password immediately or it will be disabled.",
+    "label": 1
+  },
+  {
+    "text": "Dear customer, your account will be locked. Login now to confirm your billing information within 24 hours.",
+    "label": 1
+  },
+  {
+    "text": "You have won a prize! Claim your gift card now. Click here and verify your social security number.",
+    "label": 1
+  },
+  {
+    "text": "Action required: Unusual activity detected on your account. Click to verify your identity immediately.",
+    "label": 1
+  },
+  {
+    "text": "Your password will expire in 24 hours. Update your password now to avoid account suspension.",
+    "label": 1
+  },
+  {
+    "text": "FREE OFFER! Limited time only. Click here to claim your bitcoin reward. Act now do not ignore!",
+    "label": 1
+  },
+  {
+    "text": "Dear valued customer your credit card has been locked. Verify your account to restore access immediately.",
+    "label": 1
+  },
+  {
+    "text": "IRS Tax Refund: You are eligible for a tax refund. Click here to claim your money immediately.",
+    "label": 1
+  },
+  {
+    "text": "ALERT: Suspicious login detected on your account. Confirm your identity now or your account will be terminated.",
+    "label": 1
+  },
+  {
+    "text": "Congratulations! You have been selected for a $1000 gift card. Verify your bank details to receive your prize.",
+    "label": 1
+  },
+  {
+    "text": "Your wire transfer of $5000 has been initiated. Click here to cancel if you did not authorize this payment.",
+    "label": 1
+  },
+  {
+    "text": "PayPal account is limited. Please verify your information and update your password within 24 hours.",
+    "label": 1
+  },
+  {
+    "text": "Dear user we noticed unusual activity. Update your account details at this link immediately to avoid suspension.",
+    "label": 1
+  },
+  {
+    "text": "Nigerian prince inheritance: I have $20 million inheritance and need your bank account details urgently.",
+    "label": 1
+  },
+  {
+    "text": "Your crypto wallet has been compromised. Reset your password now at http://secure-reset.ru/verify to protect your bitcoin.",
+    "label": 1
+  },
+  {
+    "text": "Account alert: Your email account will expire. Click the link to renew your account and verify password.",
+    "label": 1
+  },
+  {
+    "text": "You owe unpaid taxes. The IRS will suspend your social security number. Pay immediately to avoid legal action.",
+    "label": 1
+  },
+  {
+    "text": "WINNER! You have been selected as a lucky winner. Claim your bonus prize. Send your bank account details now.",
+    "label": 1
+  },
+  {
+    "text": "Security alert: Someone tried to login to your account. Click here to verify and reset your password now.",
+    "label": 1
+  },
+  {
+    "text": "Final warning: Your account has been flagged for suspicious activity. Verify your credit card details or lose access.",
+    "label": 1
+  },
+  {
+    "text": "Your Microsoft account is at risk. Verify your identity by clicking here and confirming your password immediately.",
+    "label": 1
+  },
+  {
+    "text": "Urgent bank notification: unusual activity on your account. Log in now to verify transactions or account will be locked.",
+    "label": 1
+  },
+  {
+    "text": "Dear customer, as per our records your subscription has expired. Click here to renew and verify billing details.",
+    "label": 1
+  },
+  {
+    "text": "You have a pending inheritance of $4.5 million. Contact us with your bank details to claim your funds.",
+    "label": 1
+  },
+  {
+    "text": "Limited offer: Free iPhone 15! Click to verify your address and credit card. Only 3 left. Act now!",
+    "label": 1
+  },
+  {
+    "text": "Your account will be deleted in 48 hours unless you verify your email and password at this secure link.",
+    "label": 1
+  },
+  {
+    "text": "Phishing test: Enter your bank password here. Urgent: your account is at risk from suspicious activity.",
+    "label": 1
+  },
+  {
+    "text": "Update required: your payment method has failed. Click here to update your billing information and avoid suspension.",
+    "label": 1
+  },
+  {
+    "text": "Dear valued member, your loyalty bonus is ready. Verify your account details to claim $500 bonus credit.",
+    "label": 1
+  },
+  {
+    "text": "SYSTEM ALERT: Unauthorized access attempt on your account. Verify identity immediately. Click here to secure your account.",
+    "label": 1
+  },
+  {
+    "text": "Hi Sarah, following up on our meeting last Thursday. Please find the Q3 report attached for your review.",
+    "label": 0
+  },
+  {
+    "text": "Meeting scheduled tomorrow at 3pm in the main conference room. Please let me know if you have any questions.",
+    "label": 0
+  },
+  {
+    "text": "Thank you for your order number 12345. Your package will arrive in 3 to 5 business days.",
+    "label": 0
+  },
+  {
+    "text": "Hi team, please review the attached project timeline and provide your feedback by end of week.",
+    "label": 0
+  },
+  {
+    "text": "Reminder: quarterly performance review is next Monday. Please come prepared with your accomplishments list.",
+    "label": 0
+  },
+  {
+    "text": "Looking forward to our call tomorrow. Let me know if the time still works for you or if you need to reschedule.",
+    "label": 0
+  },
+  {
+    "text": "Please find attached the invoice for last month services. Let me know if you have any questions or concerns.",
+    "label": 0
+  },
+  {
+    "text": "Hope you had a great vacation! We missed you at the team lunch on Friday. Welcome back to the office.",
+    "label": 0
+  },
+  {
+    "text": "The project is on track. We will have all the deliverables ready by end of this week as planned.",
+    "label": 0
+  },
+  {
+    "text": "As discussed in our last meeting, here are the action items we agreed on with their respective owners.",
+    "label": 0
+  },
+  {
+    "text": "Happy to help with that! Let me know if you need anything else from my end before the deadline.",
+    "label": 0
+  },
+  {
+    "text": "The design team has finished the mockups for review. Please share your thoughts and any revisions needed.",
+    "label": 0
+  },
+  {
+    "text": "Lunch tomorrow? There is a new Italian place that just opened near the office that everyone is talking about.",
+    "label": 0
+  },
+  {
+    "text": "Thank you for your prompt response. We will proceed as discussed in our conversation yesterday.",
+    "label": 0
+  },
+  {
+    "text": "Just checking in to see how the onboarding is going. Feel free to reach out anytime if you need support.",
+    "label": 0
+  },
+  {
+    "text": "Attached is the draft proposal for your review. Please send your comments by Thursday so we can finalize.",
+    "label": 0
+  },
+  {
+    "text": "The conference call has been moved to 2pm. Dial-in details remain the same as before. See you then.",
+    "label": 0
+  },
+  {
+    "text": "Great work on the presentation! The client was really impressed with the analysis and the data you provided.",
+    "label": 0
+  },
+  {
+    "text": "Can you send me the updated figures for the Q4 budget? I need them before the board meeting on Friday.",
+    "label": 0
+  },
+  {
+    "text": "FYI the office will be closed on Monday for the holiday. Enjoy the long weekend and rest well.",
+    "label": 0
+  },
+  {
+    "text": "Hi, I wanted to introduce myself. I am the new product manager joining the team starting next Monday.",
+    "label": 0
+  },
+  {
+    "text": "Please review the attached contract and let me know if the terms are acceptable before signing.",
+    "label": 0
+  },
+  {
+    "text": "The release notes for version 2.4 are attached. Please review and approve before we send to customers.",
+    "label": 0
+  },
+  {
+    "text": "Following up on the support ticket you submitted. The engineering team has identified the issue and will fix it.",
+    "label": 0
+  },
+  {
+    "text": "Your subscription renewal is coming up on the 15th. You can manage your plan in the account settings.",
+    "label": 0
+  },
+  {
+    "text": "Hi John, just wanted to thank you for covering my shift last week. Really appreciate your help.",
+    "label": 0
+  },
+  {
+    "text": "The weekly standup is moved from Tuesday to Wednesday this week due to a scheduling conflict.",
+    "label": 0
+  },
+  {
+    "text": "I have reviewed the marketing plan and have a few suggestions. Can we schedule a 30 minute call to discuss?",
+    "label": 0
+  },
+  {
+    "text": "Sending over the slides from yesterday presentation. Feel free to share with your team as needed.",
+    "label": 0
+  },
+  {
+    "text": "Your annual performance review is scheduled for next week. Please complete the self-assessment form beforehand.",
+    "label": 0
+  }
+]

@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "88PBRgYF8ut5CG7MLKkdS"
+uri = "file://exports/phishing_training_dataset.csv"
+type = "table"
+title = "Training Dataset (CSV — 60 samples)"
+
+[[outputs]]
+id = "hpa8axJjwcA7ydsdJ9_zW"
+uri = "file://exports/phishing_training_dataset.json"
+type = "unspecified"
+title = "Training Dataset (JSON — 60 samples)"
